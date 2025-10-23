@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>TyetaPay Ultra ⚡ Digital Wallet</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:"Poppins",sans-serif;transition:.3s ease all;}
+html,body{height:100%;overflow:hidden;}
+body{
+  display:flex;justify-content:center;align-items:center;
+  background:radial-gradient(circle at top left,#2b0045,#000);
+  color:white;
+}
+.overlay{
+  position:absolute;top:0;left:0;width:100%;height:100%;
+  background:linear-gradient(135deg,rgba(180,0,255,0.2),rgba(0,0,0,0.8));
+  backdrop-filter:blur(20px);
+  animation:movebg 10s infinite alternate ease-in-out;
+}
+@keyframes movebg{
+  from{background-position:0 0;}
+  to{background-position:100% 100%;}
+}
+.app{
+  position:relative;z-index:2;
+  width:100%;max-width:420px;
+  background:rgba(255,255,255,0.08);
+  border-radius:25px;
+  backdrop-filter:blur(25px);
+  box-shadow:0 0 40px rgba(180,0,255,0.4);
+  overflow:hidden;
+}
+header{
+  background:linear-gradient(90deg,#7500b3,#b300ff);
+  text-align:center;
+  padding:18px 0;
+  font-size:20px;
+  font-weight:700;
+  text-shadow:0 0 12px #b300ff;
+}
+header span{display:block;font-size:13px;opacity:0.8;}
+main{padding:22px;overflow-y:auto;max-height:80vh;}
+.hidden{display:none;}
+.input-group{margin-bottom:15px;}
+label{font-size:14px;opacity:0.8;}
+input{
+  width:100%;padding:10px;border:none;
+  border-radius:8px;background:rgba(255,255,255,0.15);
+  color:white;margin-top:5px;
+}
+input::placeholder{color:#ccc;}
+button{
+  width:100%;padding:12px;margin-top:10px;
+  border:none;border-radius:8px;
+  background:linear-gradient(90deg,#8b00ff,#b300ff);
+  color:white;font-weight:600;font-size:15px;
+  box-shadow:0 0 10px rgba(179,0,255,0.4);
+}
+button:hover{transform:scale(1.04);}
+.center{text-align:center;}
+.balance{font-size:28px;font-weight:700;color:#b300ff;text-shadow:0 0 10px #b300ff;}
+.actions button{width:32%;margin:5px 1%;}
+.transaction{
+  background:rgba(255,255,255,0.1);
+  border-radius:8px;padding:8px;margin:5px 0;font-size:13px;
+}
+.toggle-theme{
+  position:absolute;top:10px;right:10px;
+  background:rgba(255,255,255,0.2);border:none;
+  width:35px;height:35px;border-radius:50%;
+  color:white;font-size:18px;
+}
+canvas{margin-top:15px;}
+.dark-mode{
+  background:radial-gradient(circle at bottom right,#000010,#32004a);
+}
+</style>
+</head>
+<body>
+<div class="overlay"></div>
+<div class="app" id="app">
+  <button class="toggle-theme" onclick="toggleTheme()">🌓</button>
+  <header>TyetaPay Ultra ⚡<span>Digital Wallet</span></header>
+
+  <main id="login-page">
+    <h2 class="center">Masuk ke TyetaPay Ultra</h2><br>
+    <div class="input-group">
+      <label>Email</label>
+      <input type="email" id="login-email" placeholder="Masukkan email">
+    </div>
+    <div class="input-group">
+      <label>Password</label>
+      <input type="password" id="login-password" placeholder="Masukkan password">
+    </div>
+    <button onclick="login()">Masuk</button>
+    <p class="center">Belum punya akun? <a href="#" onclick="showRegister()">Daftar</a></p>
+  </main>
+
+  <main id="register-page" class="hidden">
+    <h2 class="center">Daftar TyetaPay Ultra</h2><br>
+    <div class="input-group"><label>Nama</label><input type="text" id="reg-name" placeholder="Masukkan nama"></div>
+    <div class="input-group"><label>Email</label><input type="email" id="reg-email" placeholder="Masukkan email"></div>
+    <div class="input-group"><label>Password</label><input type="password" id="reg-password" placeholder="Masukkan password"></div>
+    <button onclick="register()">Daftar</button>
+    <p class="center"><a href="#" onclick="showLogin()">Sudah punya akun? Masuk</a></p>
+  </main>
+
+  <main id="dashboard-page" class="hidden">
+    <h2 class="center" id="user-name"></h2>
+    <p class="center">Saldo kamu:</p>
+    <p class="center balance" id="user-balance">Rp 0</p>
+    <div class="actions center">
+      <button onclick="topup()">Isi Saldo</button>
+      <button onclick="transfer()">Transfer</button>
+      <button onclick="logout()">Keluar</button>
+    </div>
+    <canvas id="chart"></canvas>
+    <div class="history">
+      <h3>Riwayat Transaksi</h3>
+      <div id="transaction-list"></div>
+    </div>
+  </main>
+</div>
+
+<script>
+const users = JSON.parse(localStorage.getItem('tyeta_users')||'{}');
+let currentUser = JSON.parse(localStorage.getItem('tyeta_current')||'null');
+
+function showLogin(){loginPage.classList.remove('hidden');registerPage.classList.add('hidden');dashboardPage.classList.add('hidden');}
+function showRegister(){loginPage.classList.add('hidden');registerPage.classList.remove('hidden');dashboardPage.classList.add('hidden');}
+function showDashboard(){loginPage.classList.add('hidden');registerPage.classList.add('hidden');dashboardPage.classList.remove('hidden');updateChart();}
+
+const loginPage=document.getElementById('login-page');
+const registerPage=document.getElementById('register-page');
+const dashboardPage=document.getElementById('dashboard-page');
+
+function register(){
+  const n=document.getElementById('reg-name').value.trim();
+  const e=document.getElementById('reg-email').value.trim();
+  const p=document.getElementById('reg-password').value.trim();
+  if(!n||!e||!p) return alert("Isi semua kolom!");
+  if(users[e]) return alert("Email sudah terdaftar!");
+  users[e]={name:n,email:e,pass:p,balance:0,history:[]};
+  localStorage.setItem('tyeta_users',JSON.stringify(users));
+  alert("Pendaftaran berhasil! Silakan login.");showLogin();
+}
+
+function login(){
+  const e=document.getElementById('login-email').value.trim();
+  const p=document.getElementById('login-password').value.trim();
+  if(!users[e]) return alert("Akun tidak ditemukan!");
+  if(users[e].pass!==p) return alert("Password salah!");
+  currentUser=users[e];
+  localStorage.setItem('tyeta_current',JSON.stringify(currentUser));
+  loadDashboard();
+}
+
+function loadDashboard(){
+  document.getElementById('user-name').innerText=currentUser.name;
+  document.getElementById('user-balance').innerText="Rp "+currentUser.balance.toLocaleString();
+  const list=document.getElementById('transaction-list');
+  list.innerHTML=currentUser.history.map(h=>`<div class='transaction'>${h}</div>`).join('');
+  showDashboard();
+}
+
+function saveUser(){
+  users[currentUser.email]=currentUser;
+  localStorage.setItem('tyeta_users',JSON.stringify(users));
+  localStorage.setItem('tyeta_current',JSON.stringify(currentUser));
+}
+
+function playSound(type){
+  const url = type==="topup" ? "https://assets.mixkit.co/sfx/preview/mixkit-achievement-bell-600.mp3"
+  : type==="transfer" ? "https://assets.mixkit.co/sfx/preview/mixkit-positive-notification-951.mp3"
+  : "https://assets.mixkit.co/sfx/preview/mixkit-modern-click-box-check-1120.mp3";
+  new Audio(url).play();
+}
+
+function topup(){
+  playSound("topup");
+  const amount=parseInt(prompt("Masukkan jumlah isi saldo (Rp)"));
+  if(isNaN(amount)||amount<=0) return alert("Jumlah tidak valid!");
+  const bonus=Math.floor(amount*0.1);
+  currentUser.balance+=amount+bonus;
+  currentUser.history.unshift(`+ Rp${amount.toLocaleString()} (Isi Saldo) + Bonus Rp${bonus.toLocaleString()}`);
+  saveUser();loadDashboard();
+}
+
+function transfer(){
+  playSound("transfer");
+  const to=prompt("Masukkan email tujuan");
+  if(!users[to]) return alert("Tujuan tidak ditemukan!");
+  const amount=parseInt(prompt("Jumlah transfer (Rp)"));
+  if(isNaN(amount)||amount<=0) return alert("Jumlah tidak valid!");
+  if(currentUser.balance<amount) return alert("Saldo tidak cukup!");
+  currentUser.balance-=amount;users[to].balance+=amount;
+  currentUser.history.unshift(`- Rp${amount.toLocaleString()} ke ${to}`);
+  users[to].history.unshift(`+ Rp${amount.toLocaleString()} dari ${currentUser.email}`);
+  saveUser();alert("Transfer berhasil!");loadDashboard();
+}
+
+function logout(){
+  playSound("click");
+  localStorage.removeItem('tyeta_current');currentUser=null;showLogin();
+}
+
+let chart;
+function updateChart(){
+  const ctx=document.getElementById('chart');
+  if(chart) chart.destroy();
+  const hist=currentUser.history.slice(0,5).map(h=>h.replace(/[^0-9]/g,"")).map(Number);
+  chart=new Chart(ctx,{type:"line",data:{labels:["5","4","3","2","1"],datasets:[{label:"Riwayat Saldo",data:hist,borderColor:"#b300ff",fill:false,tension:0.3}]},options:{plugins:{legend:{display:false}},scales:{y:{display:false},x:{display:false}}}});
+}
+
+function toggleTheme(){
+  playSound("click");
+  document.body.classList.toggle("dark-mode");
+}
+
+if(currentUser) loadDashboard(); else showLogin();
+</script>
+</body>
+</html>
